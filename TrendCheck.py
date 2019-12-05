@@ -4,9 +4,10 @@ from getpass import getpass
 import os
 import re
 import datetime
+import pysftp
 
 CSV_FILE = "./data/resnetWired.csv"
-LEASE_FILE = "./data/dhcpd.leases"
+LEASE_FILE = "./data/dhcpd.leases.120220191150"
 SERVER = 'resnetregdev.allegheny.edu'
 LEASE_PATH = "/var/lib/dhcpd/dhcpd.leases"
 
@@ -21,12 +22,20 @@ def run():
     #     print(device)
     # getLeaseFile()
     parseLeaseFile()
-    print(len(LEASES))
-    for key, value in LEASES.items():
-        print(key)
-        for key2, value2 in LEASES[key].items():
-            print(key2 + ": " + str(LEASES[key][key2]))
-        print()
+    for device in DEVICES:
+        try:
+            print(device['IP'])
+            for key, value in LEASES[device['IP']].items():
+                print(key + ": " + str(LEASES[device['IP']][key]))
+            print()
+        except:
+            pass
+        # print(len(LEASES))
+        # for key, value in LEASES.items():
+        #     print(key)
+        #     for key2, value2 in LEASES[key].items():
+        #         print(key2 + ": " + str(LEASES[key][key2]))
+        #     print()
 
 
 def readCSV():
@@ -46,8 +55,6 @@ def readCSV():
 
 
 def getLeaseFile():
-    import pysftp
-
     srvr = pysftp.Connection(
         SERVER, username=str(input("User: ")), password=getpass()
     )
@@ -67,7 +74,8 @@ def parseLeaseFile():
     leases = leases.read().strip().split('}\n')
     for lease in leases:
         items = lease.split('\n')
-        ip = items[0].split(' ')[1]
+        # if items[6].strip().split(' ')[2] != "state":
+        ip = items[0].strip().split(' ')[1]
         start_date = datetime.date(
             int(items[1].strip().split(' ')[2].split('/')[0]),
             int(items[1].strip().split(' ')[2].split('/')[1]),
@@ -86,13 +94,20 @@ def parseLeaseFile():
             int(items[2].strip().split(' ')[3].split(':')[0]),
             int(items[2].strip().split(' ')[3].split(':')[0])
         )
-        mac = items[6].strip().split(' ')[2]
+        if items[6].strip().split(' ')[2] != "state":
+            mac = items[6].strip().split(' ')[2].replace(';', '')
+        elif items[7].strip().split(' ')[2] != "state":
+            mac = items[7].strip().split(' ')[2].replace(';', '')
+        elif items[8].strip().split(' ')[2] != "state":
+            mac = items[8].strip().split(' ')[2].replace(';', '')
         LEASES[ip] = {
             'starts': datetime.datetime.combine(start_date, start_time),
             'ends': datetime.datetime.combine(end_date, end_time),
             'MAC': mac,
-            'user': ''
+            'user': '',
         }
+        # else:
+        #     print(items[6] + "\t" + items[7])
 
 
 if __name__ == "__main__":
