@@ -8,11 +8,11 @@ import pysftp
 
 CSV_FILE = "./data/resnetWired.csv"
 LEASE_FILE = "./data/dhcpd.leases.120220191150"
-REG_FILE = "./data/tempname"
+REG_FILE = "./data/dhcpd.conf.012920201723"
 
 SERVER = 'resnetregdev.allegheny.edu'
 LEASE_PATH = "/var/lib/dhcpd/dhcpd.leases"
-REG_PATH = "/var/lib/"
+REG_PATH = "/etc/dhcp/"
 
 TEST_START = datetime.datetime(2020, 1, 23, hour=0, minute=0)
 TEST_END = datetime.datetime(2020, 1, 23, hour=23, minute=59, second=59)
@@ -29,21 +29,30 @@ def run():
           " devices that do not have Trend Installed")
     # getFiles()
     parse_lease_file()
-    # pairs up leases with devices, if there is no associated lease, remove
-    # the device
+    # pairs up leases with devices, if there is no associated lease, remove #
+    # the device #
     for device in DEVICES:
         if device['IP'] in LEASES:
             device['LEASE'] = LEASES[device['IP']]
         else:
             REMOVE.append(device)
     remove_devices()
-    REMOVE.clear()
     print("There are " + str(len(DEVICES)) + " corresponding leases")
-    # checks each device's lease time to determine if it is valid
+    # checks each device's lease time to determine if it is valid #
     for device in DEVICES:
         if check_time(device['LEASE']['starts'], device['LEASE']['ends']):
             REMOVE.append(device)
     remove_devices()
+    # print_devices()
+    # Check device mac against reg file #
+    for device in DEVICES:
+        device['USER'], device['PLATFORM'] = parse_reg_file(device['LEASE']['MAC'])
+        if device['USER'] == None:
+            REMOVE.append(device)
+    remove_devices()
+    check_platforms()
+    remove_devices()
+    print("There are " + str(len(DEVICES)) + " remaining devices")
     output()
 
 
@@ -90,6 +99,8 @@ def parse_lease_file():
     for lease in leases:
         items = lease.split('\n')
         ip_address = items[0].strip().split(' ')[1]
+        if "141.195" in ip_address:
+            pass
         start_date = datetime.date(
             int(items[1].strip().split(' ')[2].split('/')[0]),
             int(items[1].strip().split(' ')[2].split('/')[1]),
@@ -123,10 +134,10 @@ def parse_lease_file():
 
 def check_time(start, end):
     """ Checks to see if a lease's time is valid """
-    if start <= TEST_START and end >= TEST_END:
-        print("TRUE")
+    if TEST_START <= start and end >= TEST_END:
+        # print("TRUE")
         return True
-    print("FALSE", start, end)
+    # print("FALSE", start, end)
     return False
 
 
@@ -134,6 +145,36 @@ def remove_devices():
     """ Removes devices that are deamed to be in compliance """
     for device in REMOVE:
         DEVICES.remove(device)
+    REMOVE.clear()
+
+
+def parse_reg_file(mac):
+    """ Parses REG file and matches MAC to User """
+    user = None
+    platform = "NA"
+    regs = open(REG_FILE, 'r')
+    for reg in regs:
+        if "host" not in reg:
+            pass
+        else:
+            info = reg.split('#')
+            # print(info)
+            if mac == info[0].split(' ')[5]:
+                user = info[0].split(' ')[1]
+                platform = info[8]
+            else:
+                # print(mac)
+                pass
+    return user, platform
+
+
+def check_platforms():
+    for device in DEVICES:
+        platform = device['PLATFORM']
+        if 'Laptop' in platform or 'Desktop' in platform:
+            pass
+        else:
+            REMOVE.append(device)
 
 
 def print_devices():
@@ -151,13 +192,13 @@ def print_devices():
 
 def output():
     """ Creates an output file with the final list of non-compliant devices """
-    filename = "./ouput_" + \
-        str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")).replace(" ", "_") + ".txt"
+    filename = "./output_" + \
+        str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")).replace(" ", "_") + ".txt"
     with open(filename, "w") as file:
         for device in DEVICES:
             file.write("IP: " + device['IP'] + "\n" +
-                       "Status: " + device['STATUS'] + "\n" +
-                       "Result: " + device['RESULT'] + "\n" +
+                       # "Status: " + device['STATUS'] + "\n" +
+                       # "Result: " + device['RESULT'] + "\n" +
                        "Platform: " + device['PLATFORM'] + "\n")
             for key, value in device['LEASE'].items():
                 file.write(key + ": " + str(value) + "\n")
@@ -167,3 +208,5 @@ def output():
 
 # if __name__ == "__main__":
 run()
+
+# parse_reg_file()
