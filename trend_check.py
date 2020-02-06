@@ -14,8 +14,10 @@ SERVER = 'resnetregdev.allegheny.edu'
 LEASE_PATH = "/var/lib/dhcpd/dhcpd.leases"
 REG_PATH = "/etc/dhcp/"
 
-TEST_START = datetime.datetime(2020, 1, 23, hour=0, minute=0, second=0)
-TEST_END = datetime.datetime(2020, 1, 23, hour=23, minute=59, second=59)
+# TEST_START = datetime.datetime(2020, 1, 23, hour=0, minute=0, second=0)
+# TEST_END = datetime.datetime(2020, 1, 23, hour=23, minute=59, second=59)
+TEST_START = None
+TEST_END = None
 
 DEVICES = list()
 REMOVE = list()
@@ -24,6 +26,7 @@ LEASES = {}
 
 def run():
     """ Main function to determine device compliance """
+    set_time()
     parse_csv()
     print("There are " + str(len(DEVICES)) +
           " devices that do not have Trend Installed")
@@ -43,7 +46,8 @@ def run():
         if check_time(device['LEASE']['starts'], device['LEASE']['ends']):
             REMOVE.append(device)
     remove_devices()
-    # Check device mac against reg file, remove devices that don't have a match #
+    # Check device mac against reg file, remove devices that don't have a
+    # match #
     for device in DEVICES:
         device['USER'], device['PLATFORM'] = parse_reg_file(
             device['LEASE']['MAC'])
@@ -54,6 +58,50 @@ def run():
     remove_devices()
     print("Matched " + str(len(DEVICES)) + " devices with users")
     output()
+
+
+def set_time():
+    """ Set the start and end times and dates for the test """
+    # pylint: disable=W0603
+    global TEST_START
+    # pylint: disable=W0603
+    global TEST_END
+    start_date = str(
+        input("Enter the start date of the test (y/m/d): ")).split('/')
+    end_date = str(
+        input("Enter the end date of the test (if different than start): ")
+        ).split('/')
+    start_time = str(
+        input("Enter the start time of the test (24 hr:min): ")).split(':')
+    end_time = str(
+        input("Enter the end time of the test (24 hr:min): ")).split(':')
+    if end_date == [""]:
+        end_date = start_date
+    err = 0
+    if len(start_date) < 3:
+        print("\nERROR: Start date must be in y/m/d format")
+        err = err + 1
+    if len(end_date) < 3:
+        print("\nERROR: End date must be in y/m/d format")
+        err = err + 1
+    if len(start_time) < 2:
+        print("\nERROR: Start time must be in 24hr:minute format")
+        err = err + 1
+    if len(end_time) < 2:
+        print("\nERROR: End time must be in 24hr:minute format")
+        err = err + 1
+    if err == 0:
+        TEST_START = datetime.datetime(
+            int(start_date[0]), int(start_date[1]), int(start_date[2]),
+            hour=int(start_time[0]), minute=int(start_time[1])
+        )
+        TEST_END = datetime.datetime(
+            int(end_date[0]), int(end_date[1]), int(end_date[2]),
+            hour=int(end_time[0]), minute=int(end_time[1])
+        )
+    else:
+        print()
+        set_time()
 
 
 def parse_csv():
@@ -190,8 +238,15 @@ def print_devices():
 def output():
     """ Creates an output file with the final list of non-compliant devices """
     filename = "./output/output_" + \
-        str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")).replace(" ", "_") + ".txt"
+        str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            ).replace(" ", "_") + ".txt"
     with open(filename, "w") as file:
+        file.write(
+            "Test Run: " +
+            str(TEST_START) +
+            " to " +
+            str(TEST_END) +
+            "\n")
         for device in DEVICES:
             file.write("IP: " + device['IP'] + "\n" +
                        # "Status: " + device['STATUS'] + "\n" +
