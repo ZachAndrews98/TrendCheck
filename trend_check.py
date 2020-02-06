@@ -14,7 +14,7 @@ SERVER = 'resnetregdev.allegheny.edu'
 LEASE_PATH = "/var/lib/dhcpd/dhcpd.leases"
 REG_PATH = "/etc/dhcp/"
 
-TEST_START = datetime.datetime(2020, 1, 23, hour=0, minute=0)
+TEST_START = datetime.datetime(2020, 1, 23, hour=0, minute=0, second=0)
 TEST_END = datetime.datetime(2020, 1, 23, hour=23, minute=59, second=59)
 
 DEVICES = list()
@@ -43,16 +43,16 @@ def run():
         if check_time(device['LEASE']['starts'], device['LEASE']['ends']):
             REMOVE.append(device)
     remove_devices()
-    # print_devices()
-    # Check device mac against reg file #
+    # Check device mac against reg file, remove devices that don't have a match #
     for device in DEVICES:
-        device['USER'], device['PLATFORM'] = parse_reg_file(device['LEASE']['MAC'])
-        if device['USER'] == None:
+        device['USER'], device['PLATFORM'] = parse_reg_file(
+            device['LEASE']['MAC'])
+        if device['USER'] is None:
             REMOVE.append(device)
     remove_devices()
     check_platforms()
     remove_devices()
-    print("There are " + str(len(DEVICES)) + " remaining devices")
+    print("Matched " + str(len(DEVICES)) + " devices with users")
     output()
 
 
@@ -135,9 +135,7 @@ def parse_lease_file():
 def check_time(start, end):
     """ Checks to see if a lease's time is valid """
     if TEST_START <= start and end >= TEST_END:
-        # print("TRUE")
         return True
-    # print("FALSE", start, end)
     return False
 
 
@@ -158,17 +156,16 @@ def parse_reg_file(mac):
             pass
         else:
             info = reg.split('#')
-            # print(info)
             if mac == info[0].split(' ')[5]:
                 user = info[0].split(' ')[1]
                 platform = info[8]
             else:
-                # print(mac)
                 pass
     return user, platform
 
 
 def check_platforms():
+    """ Checks the platform of devices and removes ones that are approved """
     for device in DEVICES:
         platform = device['PLATFORM']
         if 'Laptop' in platform or 'Desktop' in platform:
@@ -192,7 +189,7 @@ def print_devices():
 
 def output():
     """ Creates an output file with the final list of non-compliant devices """
-    filename = "./output_" + \
+    filename = "./output/output_" + \
         str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")).replace(" ", "_") + ".txt"
     with open(filename, "w") as file:
         for device in DEVICES:
@@ -204,6 +201,7 @@ def output():
                 file.write(key + ": " + str(value) + "\n")
             file.write("User: " + device['USER'] + "\n\n")
     file.close()
+    print("Generated output file:", filename)
 
 
 # if __name__ == "__main__":
