@@ -14,8 +14,6 @@ SERVER = 'resnetregdev.allegheny.edu'
 LEASE_PATH = "/var/lib/dhcpd/dhcpd.leases"
 REG_PATH = "/etc/dhcp/"
 
-# TEST_START = datetime.datetime(2020, 1, 23, hour=0, minute=0, second=0)
-# TEST_END = datetime.datetime(2020, 1, 23, hour=23, minute=59, second=59)
 TEST_START = None
 TEST_END = None
 
@@ -246,20 +244,21 @@ def output():
             str(TEST_START) +
             " to " +
             str(TEST_END) +
-            "\n")
+            "\n\n")
         for device in DEVICES:
+            file.write("User: " + device['USER'] + "\n")
             file.write("IP: " + device['IP'] + "\n" +
                        # "Status: " + device['STATUS'] + "\n" +
                        # "Result: " + device['RESULT'] + "\n" +
                        "Platform: " + device['PLATFORM'] + "\n")
             for key, value in device['LEASE'].items():
                 file.write(key + ": " + str(value) + "\n")
-            file.write("User: " + device['USER'] + "\n\n")
+            file.write("\n")
     file.close()
     print("Generated output file:", filename)
 
 
-# if __name__ == "__main__":
-run()
+if __name__ == "__main__":
+    run()
 
 # parse_reg_file()
